@@ -60,10 +60,12 @@ colorize() {
   fi
 }
 
+# TODO
 resolve_link() {
   $(type -p greadlink readlink | head -1) "$1"
 }
 
+# TODO
 abs_dirname() {
   local cwd="$(pwd)"
   local path="$1"
@@ -130,7 +132,7 @@ version() {
   fi
 }
 
-usage() {
+show_help() {
   # We can remove the sed fallback once pyenv 0.2.0 is widely available.
   pyenv-help virtualenv 2>/dev/null || sed -ne '/^#/!q;s/.//;s/.//;1,4d;p' < "$0"
   if [ -n "${USE_CONDA}" ]; then
@@ -146,6 +148,7 @@ usage() {
 }
 
 detect_venv() {
+  # conda,virtualenv,`python -m venv`
   # Check the existence of executables as a workaround for the issue with pyenv-which-ext
   # https://github.com/yyuu/pyenv-virtualenv/issues/26
   local prefix="$(pyenv-prefix)"
@@ -173,24 +176,6 @@ detect_venv() {
       USE_M_VENV=1
     fi
   fi
-}
-
-build_package_ez_setup() {
-  local ez_setup="${PYENV_VIRTUALENV_CACHE_PATH}/ez_setup.py"
-  rm -f "${ez_setup}"
-  { if [ "${EZ_SETUP+defined}" ] && [ -f "${EZ_SETUP}" ]; then
-      echo "Installing setuptools from ${EZ_SETUP}..." 1>&2
-      cat "${EZ_SETUP}"
-    else
-      [ -n "${EZ_SETUP_URL}" ]
-      echo "Installing setuptools from ${EZ_SETUP_URL}..." 1>&2
-      http get "${EZ_SETUP_URL}"
-    fi
-  } 1> "${ez_setup}"
-  pyenv-exec python -s "${ez_setup}" ${EZ_SETUP_OPTS} 1>&2 || {
-    echo "error: failed to install setuptools via ez_setup.py" >&2
-    return 1
-  }
 }
 
 build_package_get_pip() {
@@ -258,7 +243,7 @@ for option in "${OPTIONS[@]}"; do
     FORCE=true
     ;;
   "h" | "help" )
-    usage 0
+    show_help 0
     ;;
   "no-pip" )
     NO_ENSUREPIP=1
@@ -304,6 +289,7 @@ if [[ "${#ARGUMENTS[@]}" == 0 ]]; then
   exit 1
 elif [[ "${#ARGUMENTS[@]}" == 1 ]]; then
   # If only one argument given, use current version as source version
+  # This argument is virtualenv name
   OLDIFS="${IFS}"
   IFS=:
   VERSION_NAMES=($(pyenv-version-name))
@@ -321,7 +307,7 @@ if [[ -n "${VERSION_NAME}" ]] && command -v pyenv-latest >/dev/null; then
 fi
 
 if [ -z "${VERSION_NAME}" ] || [ -z "${VIRTUALENV_NAME}" ]; then
-  usage 1
+  show_help 1
 fi
 
 if [[ "${VIRTUALENV_NAME##*/}" == "system" ]]; then
@@ -602,6 +588,7 @@ else
   if [ -n "${USE_M_VENV}" ]; then
     pyenv-exec "${M_VENV_PYTHON_BIN:-python}" -m venv $QUIET $VERBOSE "${VIRTUALENV_OPTIONS[@]}" "${VIRTUALENV_PATH}" || STATUS="$?"
   else
+    # use virtualenv command to create virtualenv
     pyenv-exec virtualenv $QUIET $VERBOSE "${VIRTUALENV_OPTIONS[@]}" "${VIRTUALENV_PATH}" || STATUS="$?"
   fi
 fi
